@@ -1,0 +1,10 @@
+{
+  "name": "MMM-SMHI-Alerts",
+  "version": "1.0.0",
+  "description": "MagicMirror module to show SMHI weather alerts",
+  "main": "MMM-SMHI-Alerts.js",
+  "dependencies": {
+    "node-fetch": "^2.6.7"
+  }
+}
+
