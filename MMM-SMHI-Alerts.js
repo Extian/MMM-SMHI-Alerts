@@ -3,9 +3,10 @@
 Module.register("MMM-SMHI-Alerts", {
   defaults: {
     area: "Västra Götalands län",
-    updateInterval: 10 * 60 * 1000,
-    rotateInterval: 30 * 1000,
-    animationSpeed: 1000
+    updateInterval: 10 * 60 * 1000, // hämta från API var 10:e minut
+    rotateInterval: 30 * 1000,      // byt varning var 30:e sekund
+    animationSpeed: 1000,
+    classificationFilter: []        // tom = alla, annars t.ex. ["MET"]
   },
 
   start: function () {
@@ -13,7 +14,9 @@ Module.register("MMM-SMHI-Alerts", {
     this.activeIndex = 0;
     this.getAlerts();
 
-    setInterval(() => this.getAlerts(), this.config.updateInterval);
+    setInterval(() => {
+      this.getAlerts();
+    }, this.config.updateInterval);
 
     setInterval(() => {
       if (this.alerts.length > 0) {
@@ -23,16 +26,18 @@ Module.register("MMM-SMHI-Alerts", {
     }, this.config.rotateInterval);
   },
 
+  // Skicka både area och classificationFilter till helpern
   getAlerts: function () {
     this.sendSocketNotification("GET_ALERTS", {
-      area: this.config.area
+      area: this.config.area,
+      classificationFilter: this.config.classificationFilter
     });
   },
 
   socketNotificationReceived: function (notification, payload) {
     if (notification === "ALERTS_RESULT") {
       this.alerts = payload;
-      this.activeIndex = 0;
+      this.activeIndex = 0; // börja om från första
       this.updateDom(this.config.animationSpeed);
     }
   },
@@ -59,10 +64,8 @@ Module.register("MMM-SMHI-Alerts", {
     const div = document.createElement("div");
     div.className = `smhi-alert ${levelClass}`;
 
-    // Endast rubrik + nivå + område
     div.innerHTML = `
-      <strong>${alert.eventDescription?.sv}</strong> 
-      (${alert.warningLevel?.sv})<br>
+      <strong>${alert.eventDescription?.sv}</strong> (${alert.warningLevel?.sv})<br>
       <span class="dimmed small">${alert.areaName?.sv}</span>
     `;
 

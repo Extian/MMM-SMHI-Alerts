@@ -26,8 +26,23 @@ module.exports = NodeHelper.create({
 
       console.log("[SMHI-ALERT] Antal hämtade varningar:", allWarnings.length);
 
-      // Plocka ut alla warningAreas
-      const warningAreas = allWarnings.flatMap(w => w.warningAreas || []);
+      // Plocka ut alla warningAreas och behåll event-info
+      const warningAreas = allWarnings.flatMap(w =>
+        (w.warningAreas || []).map(wa => ({
+          ...wa,
+          event: w.event // koppla event-info till varje warningArea
+        }))
+      );
+
+      // Debuglogg
+      warningAreas.forEach((wa, i) => {
+        console.log(
+          `[SMHI-ALERT DEBUG] #${i + 1}:`,
+          wa.eventDescription?.sv || "okänd händelse",
+          "| classification:",
+          wa.event?.mhoClassification?.code || "okänd"
+        );
+      });
 
       // Filtrera på rätt län
       let alerts = warningAreas.filter(wa =>
@@ -35,17 +50,18 @@ module.exports = NodeHelper.create({
         (wa.affectedAreas && wa.affectedAreas.some(aa => aa.sv.includes(config.area)))
       );
 
-      // === NYTT FILTER PÅ CLASSIFICATION ===
-      if (config.classificationFilter && Array.isArray(config.classificationFilter) && config.classificationFilter.length > 0) {
+      // Filter på classification
+      if (config.classificationFilter && Array.isArray(config.classificationFilter)) {
         alerts = alerts.filter(wa => {
-          const code = wa.mhoClassification?.code;
+          const code = wa.event?.mhoClassification?.code;
           return code && config.classificationFilter.includes(code);
         });
       }
-      // ======================================
 
-      console.log("[SMHI-ALERT] Antal filtrerade varningar för", config.area, ":", alerts.length);
-
+console.log(
+  `[SMHI-ALERT] Antal filtrerade varningar för ${config.area} (${config.classificationFilter?.join(", ") || "alla"}):`,
+  alerts.length
+);
       this.sendSocketNotification("ALERTS_RESULT", alerts);
 
     } catch (err) {
