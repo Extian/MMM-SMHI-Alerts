@@ -1,0 +1,25 @@
+.smhi-alert {
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 8px;
+  font-size: 16px;
+  line-height: 1.4em;
+  max-width: 400px;
+  word-wrap: break-word;
+}
+
+/* Färger efter varningsnivå – nu på höger sida */
+.smhi-alert.yellow {
+  background-color: rgba(255, 235, 59, 0.2);
+  border-right: 5px solid #ffeb3b;
+}
+
+.smhi-alert.orange {
+  background-color: rgba(255, 152, 0, 0.2);
+  border-right: 5px solid #ff9800;
+}
+
+.smhi-alert.red {
+  background-color: rgba(244, 67, 54, 0.2);
+  border-right: 5px solid #f44336;
+}
