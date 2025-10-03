@@ -1,44 +1,72 @@
 /* global Module */
 
 Module.register("MMM-SMHI-Alerts", {
-    defaults: {
-        area: "Västra Götalands län",
-        updateInterval: 15 * 60 * 1000 // 15 min
-    },
+  defaults: {
+    area: "Västra Götalands län",
+    updateInterval: 10 * 60 * 1000,
+    rotateInterval: 30 * 1000,
+    animationSpeed: 1000
+  },
 
-    start: function () {
-        this.alerts = [];
-        this.sendSocketNotification("GET_ALERTS", this.config);
-    },
+  start: function () {
+    this.alerts = [];
+    this.activeIndex = 0;
+    this.getAlerts();
 
-    socketNotificationReceived: function (notification, payload) {
-        if (notification === "ALERTS_RESULT") {
-            this.alerts = payload;
-            this.updateDom();
-        }
-    },
+    setInterval(() => this.getAlerts(), this.config.updateInterval);
 
-    getDom: function () {
-        const wrapper = document.createElement("div");
+    setInterval(() => {
+      if (this.alerts.length > 0) {
+        this.activeIndex = (this.activeIndex + 1) % this.alerts.length;
+        this.updateDom(this.config.animationSpeed);
+      }
+    }, this.config.rotateInterval);
+  },
 
-        if (this.alerts.length === 0) {
-            wrapper.innerHTML = "✅ Inga aktuella vädervarningar";
-            wrapper.className = "dimmed small";
-            return wrapper;
-        }
+  getAlerts: function () {
+    this.sendSocketNotification("GET_ALERTS", {
+      area: this.config.area
+    });
+  },
 
-        this.alerts.forEach(alert => {
-            const div = document.createElement("div");
-            div.className = "bright small";
-
-            const icon = alert.severity === "Red" ? "🔴" :
-                         alert.severity === "Orange" ? "🟠" :
-                         "🟡";
-
-            div.innerHTML = `${icon} <strong>${alert.event}</strong> – ${alert.description} <br><span class="dimmed">${alert.areaDesc} (${alert.effective} → ${alert.expires})</span>`;
-            wrapper.appendChild(div);
-        });
-
-        return wrapper;
+  socketNotificationReceived: function (notification, payload) {
+    if (notification === "ALERTS_RESULT") {
+      this.alerts = payload;
+      this.activeIndex = 0;
+      this.updateDom(this.config.animationSpeed);
     }
+  },
+
+  getStyles: function () {
+    return ["MMM-SMHI-Alerts.css"];
+  },
+
+  getDom: function () {
+    const wrapper = document.createElement("div");
+
+    if (!this.alerts || this.alerts.length === 0) {
+      wrapper.innerHTML = "Inga varningar just nu";
+      wrapper.className = "dimmed small";
+      return wrapper;
+    }
+
+    const alert = this.alerts[this.activeIndex];
+
+    let levelClass = "yellow";
+    if (alert.warningLevel?.code === "ORANGE") levelClass = "orange";
+    if (alert.warningLevel?.code === "RED") levelClass = "red";
+
+    const div = document.createElement("div");
+    div.className = `smhi-alert ${levelClass}`;
+
+    // Endast rubrik + nivå + område
+    div.innerHTML = `
+      <strong>${alert.eventDescription?.sv}</strong> 
+      (${alert.warningLevel?.sv})<br>
+      <span class="dimmed small">${alert.areaName?.sv}</span>
+    `;
+
+    wrapper.appendChild(div);
+    return wrapper;
+  }
 });

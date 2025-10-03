@@ -1,43 +1,64 @@
+/* MagicMirror²
+ * Module: MMM-SMHI-Alerts
+ */
+
 const NodeHelper = require("node_helper");
 const fetch = require("node-fetch");
 
 module.exports = NodeHelper.create({
-    start: function () {
-        console.log("MMM-SMHI-Alerts helper started ...");
-    },
+  start: function () {
+    console.log("MMM-SMHI-Alerts helper started...");
+  },
 
-    socketNotificationReceived: function (notification, payload) {
-        if (notification === "GET_ALERTS") {
-            this.config = payload;
-            this.getAlerts();
-            setInterval(() => {
-                this.getAlerts();
-            }, this.config.updateInterval);
-        }
-    },
+  async getAlerts(area) {
+    const url = "https://opendata-download-warnings.smhi.se/ibww/api/version/1/warning.json";
 
-    async getAlerts() {
-        try {
-            const url = "https://opendata.smhi.se/apidocs/metalerts/2.0/alerts.json";
-            const res = await fetch(url);
-            const json = await res.json();
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error("SMHI API fel:", res.status, res.statusText);
+        this.sendSocketNotification("ALERTS_RESULT", []);
+        return;
+      }
 
-            // Filtrera ut varningar för rätt område
-            const alerts = (json.alerts || []).filter(a =>
-                a.areaDesc.includes(this.config.area)
-            ).map(a => ({
-                event: a.event,
-                description: a.description,
-                severity: a.severity,
-                areaDesc: a.areaDesc,
-                effective: a.effective,
-                expires: a.expires
-            }));
+      const data = await res.json();
+      const allWarnings = Array.isArray(data) ? data : [];
 
-            this.sendSocketNotification("ALERTS_RESULT", alerts);
-        } catch (err) {
-            console.error("SMHI Alerts error:", err);
-            this.sendSocketNotification("ALERTS_RESULT", []);
-        }
+      console.log("[SMHI-ALERT] Antal hämtade varningar:", allWarnings.length);
+
+      // Plocka ut alla warningAreas
+      const warningAreas = allWarnings.flatMap(w => w.warningAreas || []);
+
+      // Logga för debug
+      warningAreas.forEach((wa, i) => {
+        console.log(
+          `[SMHI-ALERT] ${i + 1}:`,
+          wa.eventDescription?.sv || "okänd händelse",
+          "| Nivå:", wa.warningLevel?.sv || "okänd",
+          "| Område:", wa.areaName?.sv || "okänt",
+          "| Län:", (wa.affectedAreas || []).map(a => a.sv).join(", ")
+        );
+      });
+
+      // Filtrera på rätt län
+      const alerts = warningAreas.filter(wa =>
+        (wa.areaName?.sv && wa.areaName.sv.includes(area)) ||
+        (wa.affectedAreas && wa.affectedAreas.some(aa => aa.sv.includes(area)))
+      );
+
+      console.log("[SMHI-ALERT] Antal filtrerade varningar för", area, ":", alerts.length);
+
+      this.sendSocketNotification("ALERTS_RESULT", alerts);
+
+    } catch (err) {
+      console.error("Fel vid hämtning av SMHI Alerts:", err);
+      this.sendSocketNotification("ALERTS_RESULT", []);
     }
+  },
+
+  socketNotificationReceived: function (notification, payload) {
+    if (notification === "GET_ALERTS") {
+      this.getAlerts(payload.area);
+    }
+  }
 });
