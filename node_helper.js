@@ -30,15 +30,15 @@ module.exports = NodeHelper.create({
       const warningAreas = allWarnings.flatMap(w => w.warningAreas || []);
 
       // Logga för debug
-      warningAreas.forEach((wa, i) => {
-        console.log(
-          `[SMHI-ALERT] ${i + 1}:`,
-          wa.eventDescription?.sv || "okänd händelse",
-          "| Nivå:", wa.warningLevel?.sv || "okänd",
-          "| Område:", wa.areaName?.sv || "okänt",
-          "| Län:", (wa.affectedAreas || []).map(a => a.sv).join(", ")
-        );
-      });
+//      warningAreas.forEach((wa, i) => {
+//        console.log(
+//          `[SMHI-ALERT] ${i + 1}:`,
+//          wa.eventDescription?.sv || "okänd händelse",
+//          "| Nivå:", wa.warningLevel?.sv || "okänd",
+//          "| Område:", wa.areaName?.sv || "okänt",
+//          "| Län:", (wa.affectedAreas || []).map(a => a.sv).join(", ")
+//        );
+//      });
 
       // Filtrera på rätt län
       const alerts = warningAreas.filter(wa =>
@@ -46,7 +46,7 @@ module.exports = NodeHelper.create({
         (wa.affectedAreas && wa.affectedAreas.some(aa => aa.sv.includes(area)))
       );
 
-      console.log("[SMHI-ALERT] Antal filtrerade varningar för", area, ":", alerts.length);
+//      console.log("[SMHI-ALERT] Antal filtrerade varningar för", area, ":", alerts.length);
 
       this.sendSocketNotification("ALERTS_RESULT", alerts);
 
